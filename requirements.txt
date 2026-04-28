@@ -1,0 +1,8 @@
+Flask
+flask-login
+numpy
+requests
+python-dotenv
+apscheduler
+scikit-learn
+gunicorn
