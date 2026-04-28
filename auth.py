@@ -8,7 +8,13 @@ import bcrypt
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 import pymysql
-from db import get_connection
+
+try:
+    from db import get_connection
+    DB_ENABLED = True
+except Exception:
+    DB_ENABLED = False
+    get_connection = None
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -26,6 +32,8 @@ class User(UserMixin):
 
 def load_user_by_id(user_id):
     """Load user from DB by integer PK — used by Flask-Login."""
+    if not DB_ENABLED or get_connection is None:
+        return None
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -47,6 +55,9 @@ def login_page():
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
+    if not DB_ENABLED or get_connection is None:
+        return jsonify({"error": "Database unavailable"}), 503
+
     data = request.get_json()
     username = data.get("username", "").strip()
     password = data.get("password", "")
@@ -93,6 +104,9 @@ def register():
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
+    if not DB_ENABLED or get_connection is None:
+        return jsonify({"error": "Database unavailable"}), 503
+
     data = request.get_json()
     username = data.get("username", "").strip()
     password = data.get("password", "")

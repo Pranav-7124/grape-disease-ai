@@ -170,6 +170,96 @@ def chat():
         return jsonify({"error": str(e)})
 
 # ============================================================
+# WEATHER ENDPOINTS (used by frontend)
+# ============================================================
+@app.route("/weather_now")
+def weather_now():
+    if not OPENWEATHER_API_KEY:
+        return jsonify({"error": "Weather API not configured"}), 500
+
+    try:
+        lat = request.args.get("lat")
+        lon = request.args.get("lon")
+        location = request.args.get("location")
+
+        if lat and lon:
+            url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={OPENWEATHER_API_KEY}&units=metric"
+        elif location:
+            url = f"http://api.openweathermap.org/data/2.5/weather?q={location}&appid={OPENWEATHER_API_KEY}&units=metric"
+        else:
+            return jsonify({"error": "Provide lat/lon or location"}), 400
+
+        res = requests.get(url)
+        data = res.json()
+
+        if "main" not in data:
+            return jsonify({"error": data.get("message", "Weather API error")}), 400
+
+        return jsonify({
+            "city": data.get("name", location),
+            "temp": data["main"]["temp"],
+            "humidity": data["main"]["humidity"],
+            "description": data["weather"][0]["description"] if data.get("weather") else "",
+            "icon": data["weather"][0]["icon"] if data.get("weather") else "01d"
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/forecast")
+def forecast():
+    if not OPENWEATHER_API_KEY:
+        return jsonify({"error": "Weather API not configured"}), 500
+
+    try:
+        lat = request.args.get("lat")
+        lon = request.args.get("lon")
+        location = request.args.get("location")
+
+        if lat and lon:
+            url = f"http://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={OPENWEATHER_API_KEY}&units=metric"
+        elif location:
+            url = f"http://api.openweathermap.org/data/2.5/forecast?q={location}&appid={OPENWEATHER_API_KEY}&units=metric"
+        else:
+            return jsonify({"error": "Provide lat/lon or location"}), 400
+
+        res = requests.get(url)
+        data = res.json()
+
+        if "list" not in data:
+            return jsonify({"error": data.get("message", "Weather API error")}), 400
+
+        # Aggregate 3-hourly data into daily forecast
+        daily = {}
+        for item in data["list"]:
+            date = item["dt_txt"][:10]
+            if date not in daily:
+                daily[date] = {
+                    "date": date,
+                    "temps": [],
+                    "descriptions": []
+                }
+            daily[date]["temps"].append(item["main"]["temp"])
+            desc = item["weather"][0]["description"] if item.get("weather") else ""
+            daily[date]["descriptions"].append(desc)
+
+        forecast_list = []
+        for date in sorted(daily.keys())[:5]:
+            info = daily[date]
+            forecast_list.append({
+                "date": date,
+                "temp": round(sum(info["temps"]) / len(info["temps"]), 1),
+                "description": max(set(info["descriptions"]), key=info["descriptions"].count)
+            })
+
+        return jsonify({"forecast": forecast_list})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ============================================================
 # SIMPLE HEALTH CHECK
 # ============================================================
 @app.route("/health")
@@ -180,4 +270,5 @@ def health():
 # RUN
 # ============================================================
 if __name__ == "__main__":
-    app.run(debug=True)
+    PORT = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=PORT, debug=False)
