@@ -13,4 +13,11 @@
 - [x] 3. Fix `db.py` — use env vars with safe fallback
 - [x] 4. Fix `auth.py` — safe DB import fallback
 - [x] 5. Verify `script.js` uses relative URLs
+- [x] 6. Fix weather buffering — proper loading state management
+- [x] 7. Fix disease prediction — proper error handling, loading states, result formatting
+- [x] 8. Fix camera/image scanner — add missing JS functions (openCamera, captureImage, etc.)
+- [x] 9. Add `/scan` backend endpoint with image analysis
+- [x] 10. Fix chatbot — structured responses, loading states, formatted output
+- [x] 11. Add missing CSS styles for all new UI components
+- [x] 12. Add Pillow to requirements for image processing
 

@@ -407,6 +407,37 @@ select option { background: #1e1030; }
     grid-template-columns: 1fr 1fr;
     gap: 10px;
 }
+.result-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13px;
+}
+.result-item strong {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.result-item span {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.result-disease { border-left: 3px solid #ef4444; }
+.result-risk { border-left: 3px solid #f59e0b; }
+.result-disease span { color: #ef4444; }
+.result-risk span { color: #f59e0b; }
+.result-error {
+    color: #f87171;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px;
+}
 .result-stat {
     display: flex;
     flex-direction: column;
@@ -586,6 +617,149 @@ select option { background: #1e1030; }
     border-radius: 50%;
     animation: spin 0.7s linear infinite;
     vertical-align: middle;
+}
+
+/* ============================================================
+   FORECAST
+   ============================================================ */
+.forecast-error {
+    color: #f87171;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 12px;
+    text-align: center;
+}
+.forecast-date {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent-grape-l);
+    margin-bottom: 4px;
+}
+.forecast-temp {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 4px 0;
+}
+.forecast-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+/* ============================================================
+   SCAN RESULTS
+   ============================================================ */
+.scan-loading {
+    color: var(--text-muted);
+    font-size: 14px;
+    text-align: center;
+    padding: 20px;
+}
+.scan-error {
+    color: #f87171;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 12px;
+}
+.scan-result-box {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.scan-result-box h4 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent-grape-l);
+    margin: 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(139,92,246,0.2);
+}
+.scan-disease {
+    font-size: 18px;
+    font-weight: 700;
+    color: #ef4444;
+}
+.scan-confidence {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+.scan-advice {
+    font-size: 13px;
+    color: var(--text-primary);
+    line-height: 1.6;
+    background: rgba(255,255,255,0.03);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    border-left: 3px solid var(--accent-green);
+}
+
+/* ============================================================
+   CHAT MESSAGES
+   ============================================================ */
+.chat-user {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 8px;
+}
+.chat-bot {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 8px;
+}
+.chat-user .bubble {
+    background: linear-gradient(135deg, var(--accent-grape), var(--accent-grape-l));
+    color: #fff;
+    border-bottom-right-radius: 4px;
+    max-width: 82%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    animation: fadeIn 0.3s ease;
+}
+.chat-bot .bubble {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+    color: var(--text-primary);
+    max-width: 82%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    animation: fadeIn 0.3s ease;
+}
+.chat-bot .bubble p {
+    margin: 0 0 8px 0;
+}
+.chat-bot .bubble p:last-child {
+    margin-bottom: 0;
+}
+.chat-bot .bubble ul {
+    margin: 8px 0;
+    padding-left: 18px;
+}
+.chat-bot .bubble li {
+    margin-bottom: 4px;
+}
+.chat-bot .bubble strong {
+    color: var(--accent-grape-l);
+}
+
+/* ============================================================
+   SPINNER INLINE (for buttons)
+   ============================================================ */
+.spinner-inline {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
 }
 
 /* ============================================================
