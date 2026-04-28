@@ -7,22 +7,14 @@ import pickle
 import numpy as np
 import requests
 import os
+
 from apscheduler.schedulers.background import BackgroundScheduler
 
-# ============================================================
-# APP SETUP
-# ============================================================
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "fallback-secret")
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
 
 # ============================================================
-# ENV VARIABLES (SECURE)
-# ============================================================
-API_KEY = os.getenv("OPENWEATHER_API_KEY")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-
-# ============================================================
-# Flask-Login Setup
+# LOGIN SETUP
 # ============================================================
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -37,93 +29,74 @@ def load_user(user_id):
     return load_user_by_id(user_id)
 
 # ============================================================
-# Database Init
+# DATABASE (OPTIONAL)
 # ============================================================
 try:
-    from db import init_db, log_prediction, log_scan, get_last_training
+    from db import init_db, log_prediction, log_scan
     init_db()
     DB_ENABLED = True
-except Exception as e:
+except:
     DB_ENABLED = False
-    print(f"[DB] Not available: {e}")
 
 # ============================================================
-# Load ML Models
+# ENV VARIABLES
+# ============================================================
+OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+if not OPENWEATHER_API_KEY:
+    raise Exception("❌ Missing OPENWEATHER_API_KEY")
+
+if not OPENROUTER_API_KEY:
+    print("⚠️ WARNING: OPENROUTER_API_KEY not set - chatbot disabled")
+
+# ============================================================
+# LOAD MODELS (SAFE)
 # ============================================================
 def load_models():
-    return (
-        pickle.load(open("disease_model.pkl", "rb")),
-        pickle.load(open("risk_model.pkl", "rb")),
-        pickle.load(open("stage_encoder.pkl", "rb")),
-        pickle.load(open("disease_encoder.pkl", "rb")),
-        pickle.load(open("risk_encoder.pkl", "rb")),
-    )
+    try:
+        return (
+            pickle.load(open("disease_model.pkl", "rb")),
+            pickle.load(open("risk_model.pkl", "rb")),
+            pickle.load(open("stage_encoder.pkl", "rb")),
+            pickle.load(open("disease_encoder.pkl","rb")),
+            pickle.load(open("risk_encoder.pkl", "rb")),
+        )
+    except Exception as e:
+        print("[ERROR] Model loading failed:", e)
+        return None, None, None, None, None
 
 disease_model, risk_model, stage_encoder, disease_encoder, risk_encoder = load_models()
 
 # ============================================================
-# Scheduler (Auto Retrain)
-# ============================================================
-def scheduled_retrain():
-    if not DB_ENABLED:
-        return
-    try:
-        from trainer import run_training
-        acc, n = run_training("scheduled")
-        global disease_model, risk_model, stage_encoder, disease_encoder, risk_encoder
-        disease_model, risk_model, stage_encoder, disease_encoder, risk_encoder = load_models()
-        print(f"[RETRAIN] Accuracy: {acc}")
-    except Exception as e:
-        print(f"[RETRAIN ERROR] {e}")
-
-scheduler = BackgroundScheduler()
-scheduler.add_job(scheduled_retrain, "cron", hour=2)
-scheduler.start()
-
-# ============================================================
-# WEATHER FUNCTION
+# WEATHER
 # ============================================================
 def get_weather(location=None, lat=None, lon=None):
     if lat and lon:
-        url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_KEY}&units=metric"
+        url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={OPENWEATHER_API_KEY}&units=metric"
     else:
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={location}&appid={API_KEY}&units=metric"
+        url = f"http://api.openweathermap.org/data/2.5/weather?q={location}&appid={OPENWEATHER_API_KEY}&units=metric"
 
-    res = requests.get(url).json()
+    res = requests.get(url)
+    data = res.json()
 
-    if "main" not in res:
-        raise Exception(res.get("message", "Weather error"))
+    if "main" not in data:
+        raise Exception(data.get("message", "Weather API error"))
 
     return (
-        res["main"]["temp"],
-        res["main"]["humidity"],
-        res.get("rain", {}).get("1h", 0),
-        res.get("name", location)
+        data["main"]["temp"],
+        data["main"]["humidity"],
+        data.get("rain", {}).get("1h", 0),
+        data.get("name", location)
     )
-
-# ============================================================
-# CHATBOT
-# ============================================================
-def ask_llm(msg):
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "model": "openai/gpt-4o-mini",
-        "messages": [{"role": "user", "content": msg}]
-    }
-
-    res = requests.post(url, headers=headers, json=payload).json()
-    return res["choices"][0]["message"]["content"]
 
 # ============================================================
 # ROUTES
 # ============================================================
 @app.route("/")
 def home():
+    if current_user.is_authenticated:
+        return redirect(url_for("app_ui"))
     return redirect(url_for("auth.login_page"))
 
 @app.route("/app")
@@ -137,25 +110,24 @@ def app_ui():
 @app.route("/predict", methods=["POST"])
 @login_required
 def predict():
+    if not disease_model:
+        return jsonify({"error": "Model not loaded"})
+
     try:
         data = request.get_json()
 
         temp, hum, rain, city = get_weather(
-            data.get("location"),
-            data.get("lat"),
-            data.get("lon")
+            location=data.get("location"),
+            lat=data.get("lat"),
+            lon=data.get("lon")
         )
 
         stage = stage_encoder.transform([data["growth_stage"]])[0]
+
         features = np.array([[temp, hum, rain, stage]])
 
-        disease = disease_encoder.inverse_transform(
-            disease_model.predict(features)
-        )[0]
-
-        risk = risk_encoder.inverse_transform(
-            risk_model.predict(features)
-        )[0]
+        disease = disease_encoder.inverse_transform(disease_model.predict(features))[0]
+        risk = risk_encoder.inverse_transform(risk_model.predict(features))[0]
 
         return jsonify({
             "location": city,
@@ -170,29 +142,42 @@ def predict():
         return jsonify({"error": str(e)})
 
 # ============================================================
-# FORECAST
-# ============================================================
-@app.route("/forecast")
-@login_required
-def forecast():
-    location = request.args.get("location")
-
-    url = f"http://api.openweathermap.org/data/2.5/forecast?q={location}&appid={API_KEY}&units=metric"
-    data = requests.get(url).json()
-
-    return jsonify(data)
-
-# ============================================================
-# CHAT
+# CHATBOT
 # ============================================================
 @app.route("/chat", methods=["POST"])
 @login_required
 def chat():
-    msg = request.json.get("message")
-    return jsonify({"reply": ask_llm(msg)})
+    if not OPENROUTER_API_KEY:
+        return jsonify({"reply": "Chatbot not configured."})
+
+    try:
+        msg = request.json.get("message")
+
+        res = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}"},
+            json={
+                "model": "openai/gpt-4o-mini",
+                "messages": [{"role": "user", "content": msg}]
+            }
+        )
+
+        return jsonify({
+            "reply": res.json()["choices"][0]["message"]["content"]
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+# ============================================================
+# SIMPLE HEALTH CHECK
+# ============================================================
+@app.route("/health")
+def health():
+    return "OK"
 
 # ============================================================
 # RUN
 # ============================================================
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(debug=True)
