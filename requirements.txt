@@ -7,4 +7,3 @@ apscheduler
 scikit-learn
 gunicorn
 bcrypt
-pymysql
