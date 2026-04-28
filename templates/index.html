@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍇 VineAI – Grape Crop Intelligence Dashboard</title>
+    <meta name="description" content="AI-powered grape disease prediction, crop image scanning, real-time weather and multilingual farmer advisory system.">
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Google Translate -->
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({
+                pageLanguage: 'en',
+                includedLanguages: 'en,hi,mr,te,ta,kn,gu,pa,bn',
+                layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+                autoDisplay: false
+            }, 'google_translate_element');
+        }
+    </script>
+    <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+</head>
+<body>
+
+<!-- ========== NOTIFICATION BANNER ========== -->
+<div id="notifBanner" class="notif-banner hidden">
+    <span id="notifText">⚠️ Weather has changed significantly!</span>
+    <button onclick="dismissNotif()">✕</button>
+</div>
+
+<!-- ========== LANGUAGE BAR ========== -->
+<div class="lang-top-bar">
+    <span class="lang-top-label">🌐 Change Language:</span>
+    <div id="google_translate_element" class="translate-widget"></div>
+</div>
+
+<!-- ========== HEADER ========== -->
+<header class="header">
+    <div class="header-left">
+        <div class="logo">🍇</div>
+        <div>
+            <h1 class="app-title">VineAI Dashboard</h1>
+            <p class="app-subtitle">Smart grape farming powered by AI &amp; real-time weather</p>
+        </div>
+    </div>
+    <div class="header-right">
+        <div class="current-weather-mini" id="currentWeatherMini">
+            <span id="miniWeatherIcon">🌤️</span>
+            <span id="miniCityName">Detecting...</span>
+            <span id="miniTemp">--°C</span>
+        </div>
+        <div class="user-pill">
+            <span class="user-icon">👤</span>
+            <span class="user-name">{{ username }}</span>
+            <a href="/logout" class="logout-btn" title="Sign out">⏏</a>
+        </div>
+    </div>
+</header>
+
+<!-- ========== LIVE FORECAST BAR ========== -->
+<section class="forecast-section">
+    <div class="section-header">
+        <h2>📅 Live 5-Day Weather Forecast</h2>
+        <span class="forecast-city" id="forecastCityLabel">Detecting location...</span>
+    </div>
+    <div class="forecast-loading" id="forecastLoading">
+        <div class="spinner"></div>
+        <p>Loading forecast...</p>
+    </div>
+    <div class="forecast-strip" id="forecastStrip"></div>
+</section>
+
+<!-- ========== MAIN CONTENT ========== -->
+<main class="main-grid">
+
+    <!-- ===== PREDICTION CARD ===== -->
+    <div class="card card-predict">
+        <div class="card-icon">🔬</div>
+        <h2>Disease Prediction</h2>
+        <p class="card-desc">Predict grape diseases based on live weather conditions</p>
+
+        <div class="input-group">
+            <label>📍 Location</label>
+            <div class="location-row">
+                <input type="text" id="location" placeholder="e.g. Pune, IN" autocomplete="off">
+                <button class="btn-icon" onclick="detectLocation()" title="Use My Location" id="gpsBtn">
+                    <span>📡</span>
+                </button>
+            </div>
+            <small id="locationStatus" class="location-status">Enter city or use GPS detection</small>
+        </div>
+
+        <div class="input-group">
+            <label>🌱 Growth Stage</label>
+            <select id="stage">
+                <option value="seedling">🌱 Seedling</option>
+                <option value="vegetative">🍃 Vegetative</option>
+                <option value="flowering">🌸 Flowering</option>
+                <option value="fruiting">🍇 Fruiting</option>
+            </select>
+        </div>
+
+        <button class="btn-primary" onclick="predict()" id="predictBtn">
+            <span>🔍 Predict Disease</span>
+        </button>
+
+        <div id="result" class="result-box hidden"></div>
+    </div>
+
+    <!-- ===== CAMERA SCAN CARD ===== -->
+    <div class="card card-scan">
+        <div class="card-icon">📷</div>
+        <h2>Crop Image Scanner</h2>
+        <p class="card-desc">Capture or upload a photo — AI analyses disease &amp; recommends treatment</p>
+
+        <div class="scan-actions">
+            <button class="btn-secondary" onclick="openCamera()" id="cameraBtn">
+                📷 Open Camera
+            </button>
+            <label class="btn-secondary upload-label" for="imageUpload">
+                📁 Upload Image
+            </label>
+            <input type="file" id="imageUpload" accept="image/*" onchange="handleImageUpload(event)" style="display:none">
+        </div>
+
+        <!-- Camera preview area -->
+        <div class="camera-preview" id="cameraPreview" style="display:none">
+            <video id="cameraVideo" autoplay playsinline></video>
+            <button class="btn-capture" onclick="captureImage()">📸 Capture</button>
+            <button class="btn-icon-small" onclick="stopCamera()" title="Close camera">✕ Close</button>
+        </div>
+
+        <!-- Image preview -->
+        <div class="image-preview-wrap" id="imagePreviewWrap" style="display:none">
+            <img id="imagePreview" src="" alt="Crop preview">
+            <button class="btn-primary" onclick="analyseImage()" id="analyseBtn">
+                🤖 Analyse Crop
+            </button>
+        </div>
+
+        <!-- Scan result -->
+        <div id="scanResult" class="scan-result hidden"></div>
+    </div>
+
+    <!-- ===== CHATBOT CARD ===== -->
+    <div class="card card-chat">
+        <div class="card-icon">💬</div>
+        <h2>Ask AI Advisor</h2>
+        <p class="card-desc">Ask anything about your crop — replies in your language</p>
+
+        <div id="chatBox" class="chat-box">
+            <div class="bot"><div class="bubble">👋 Hello! I'm your AI farming advisor. Ask me about diseases, pesticides, or crop care.</div></div>
+        </div>
+
+        <div class="chat-input-row">
+            <input type="text" id="chatInput" placeholder="Ask in English, Hindi, Marathi..." onkeydown="if(event.key==='Enter') sendChat()">
+            <button class="btn-send" onclick="sendChat()">➤</button>
+        </div>
+    </div>
+
+</main>
+
+<script src="/static/script.js"></script>
+</body>
+</html>
